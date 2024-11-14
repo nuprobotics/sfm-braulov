@@ -6,8 +6,50 @@ from matplotlib.widgets import Slider
 import yaml
 
 
+def get_matches(
+        image1: np.ndarray,
+        image2: np.ndarray,
+
+) -> typing.Tuple[typing.Sequence[cv2.KeyPoint], typing.Sequence[cv2.KeyPoint], typing.Sequence[cv2.DMatch]]:
+
+    k_ratio = 0.75
+    sift = cv2.SIFT_create()
+
+    keypoints1, descriptors1 = sift.detectAndCompute(image1, None)
+    keypoints2, descriptors2 = sift.detectAndCompute(image2, None)
+
+
+    bf = cv2.BFMatcher(cv2.NORM_L2, crossCheck=False)
+
+
+    knn_matches = bf.knnMatch(descriptors1, descriptors2, k=2)
+
+
+    good_matches = []
+    for m, n in knn_matches:
+        if m.distance < k_ratio * n.distance:
+            good_matches.append(m)
+
+
+    final_matches = []
+    for match in good_matches:
+
+        src_idx = match.queryIdx
+        dst_idx = match.trainIdx
+
+        reverse_matches = bf.knnMatch(descriptors2[dst_idx].reshape(1, -1), descriptors1, k=2)
+        if len(reverse_matches) >= 1:
+            m_reverse, n_reverse = reverse_matches[0]
+
+            if m_reverse.distance < k_ratio * n_reverse.distance:
+
+                if m_reverse.trainIdx == src_idx:
+                    final_matches.append(match)
+
+
+    return keypoints1, keypoints2, final_matches
 # Task 2
-def get_matches(image1, image2) -> typing.Tuple[
+'''def get_matches(image1, image2) -> typing.Tuple[
     typing.Sequence[cv2.KeyPoint], typing.Sequence[cv2.KeyPoint], typing.Sequence[cv2.DMatch]]:
     sift = cv2.SIFT_create()
     img1_gray = cv2.cvtColor(image1, cv2.COLOR_BGR2GRAY)
@@ -18,8 +60,8 @@ def get_matches(image1, image2) -> typing.Tuple[
     bf = cv2.BFMatcher()
     matches_1_to_2: typing.Sequence[typing.Sequence[cv2.DMatch]] = bf.knnMatch(descriptors1, descriptors2, k=2)
 
-    # YOUR CODE HERE
-
+    return matches_1_to_2
+'''
 
 def get_second_camera_position(kp1, kp2, matches, camera_matrix):
     coordinates1 = np.array([kp1[match.queryIdx].pt for match in matches])
